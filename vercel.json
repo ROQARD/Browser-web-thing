@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/run", "destination": "/server.js" }
+  ]
+}
