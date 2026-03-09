@@ -1,29 +1,25 @@
-import chromium from '@sparticuz/chromium';
-import { chromium as playwright } from 'playwright-core';
+const view = document.getElementById('view');
+const urlInput = document.getElementById('urlInput');
 
-export default async function handler(req, res) {
-    try {
-        const browser = await playwright.launch({
-            args: chromium.args,
-            executablePath: await chromium.executablePath(),
-            headless: true,
-        });
-        
-        const context = await browser.newContext({
-            viewport: { width: 834, height: 1194 },
-            hasTouch: true
-        });
-
-        const page = await context.newPage();
-        await page.goto(req.query.url || 'https://google.com', { waitUntil: 'networkidle' });
-
-        const screenshot = await page.screenshot({ type: 'jpeg', quality: 60 });
-        await browser.close();
-
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.send(screenshot);
-    } catch (error) {
-        res.status(500).send("Browser failed to start: " + error.message);
-    }
+// Function to load a new website
+function updateSurface() {
+    const targetUrl = urlInput.value || 'https://google.com';
+    // We add Date.now() to force the browser to bypass the cache and show the new site
+    view.src = `/run?url=${encodeURIComponent(targetUrl)}&t=${Date.now()}`;
 }
+
+// Allow pressing "Enter" in the input box to load the site
+urlInput.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        updateSurface();
+    }
+});
+
+// Keep your existing click logic for the iPad touches
+view.onclick = (e) => {
+    const rect = view.getBoundingClientRect();
+    const x = Math.round((e.clientX - rect.left) * (834 / rect.width));
+    const y = Math.round((e.clientY - rect.top) * (1194 / rect.height));
+    
+    view.src = `/run?url=${encodeURIComponent(urlInput.value)}&x=${x}&y=${y}&t=${Date.now()}`;
+};
