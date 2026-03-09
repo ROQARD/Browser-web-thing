@@ -1,38 +1,29 @@
 import chromium from '@sparticuz/chromium';
 import { chromium as playwright } from 'playwright-core';
-import { put, get } from '@vercel/blob';
 
 export default async function handler(req, res) {
-    const { url, x, y } = req.query;
-    
-    // 1. Launch Browser
-    const browser = await playwright.launch({
-        args: chromium.args,
-        executablePath: await chromium.executablePath(),
-        headless: true
-    });
+    try {
+        const browser = await playwright.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: true,
+        });
+        
+        const context = await browser.newContext({
+            viewport: { width: 834, height: 1194 },
+            hasTouch: true
+        });
 
-    // 2. iPad Emulation
-    const context = await browser.newContext({
-        viewport: { width: 834, height: 1194 },
-        hasTouch: true,
-        isMobile: true
-    });
+        const page = await context.newPage();
+        await page.goto(req.query.url || 'https://google.com', { waitUntil: 'networkidle' });
 
-    const page = await context.newPage();
-    await page.goto(url || 'https://google.com');
+        const screenshot = await page.screenshot({ type: 'jpeg', quality: 60 });
+        await browser.close();
 
-    // 3. Handle Touch Input
-    if (x && y) {
-        await page.touchscreen.tap(parseInt(x), parseInt(y));
-        await page.waitForTimeout(600); // Wait for the page to react
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.send(screenshot);
+    } catch (error) {
+        res.status(500).send("Browser failed to start: " + error.message);
     }
-
-    // 4. Capture the "iPad Screen"
-    const screenshot = await page.screenshot({ type: 'jpeg', quality: 70 });
-    
-    await browser.close();
-
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.send(screenshot);
 }
